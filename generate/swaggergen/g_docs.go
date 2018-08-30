@@ -36,7 +36,7 @@ import (
 
 	"github.com/astaxie/beego/swagger"
 	"github.com/astaxie/beego/utils"
-	beeLogger "github.com/beego/bee/logger"
+	"github.com/beego/bee/logger"
 	bu "github.com/beego/bee/utils"
 )
 
@@ -261,6 +261,7 @@ func GenerateDocs(curpath string) {
 		switch specDecl := d.(type) {
 		case *ast.FuncDecl:
 			for _, l := range specDecl.Body.List {
+
 				switch stmt := l.(type) {
 				case *ast.AssignStmt:
 					for _, l := range stmt.Rhs {
@@ -308,6 +309,25 @@ func GenerateDocs(curpath string) {
 						}
 
 					}
+				case *ast.ExprStmt:
+					if v, ok := stmt.X.(*ast.CallExpr); ok {
+						se, ok := v.Fun.(*ast.SelectorExpr)
+						if !ok {
+							continue
+						}
+						if selname := se.Sel.Name; selname == "Router" { // 	beego.Router("/", &default_service.DefaultController{}, "*:ApiGetAll")
+							controllerName := parseRouterController(v.Args[1])
+
+							if v, ok := controllerComments[controllerName]; ok {
+								rootapi.Tags = append(rootapi.Tags, swagger.Tag{
+									Name:        controllerName,
+									Description: v,
+								})
+							}
+						}
+
+					}
+
 				}
 			}
 		}
@@ -333,6 +353,55 @@ func GenerateDocs(curpath string) {
 	if err != nil || erryml != nil {
 		panic(err)
 	}
+}
+
+func parseRouterController(p1 interface{}) string {
+	cname := ""
+	var x *ast.SelectorExpr
+
+	if _, ok := p1.(*ast.UnaryExpr); ok {
+		x = p1.(*ast.UnaryExpr).X.(*ast.CompositeLit).Type.(*ast.SelectorExpr)
+	} else {
+		beeLogger.Log.Warnf("Couldn't determine type\n")
+	}
+	if v, ok := importlist[fmt.Sprint(x.X)]; ok {
+		cname = v + x.Sel.Name
+	}
+	if apis, ok := controllerList[cname]; ok {
+		for rt, item := range apis {
+			taglist := strings.Split(cname, "/")
+			tag := taglist[len(taglist)-1]
+
+			if item.Get != nil {
+				item.Get.Tags = []string{tag}
+			}
+			if item.Post != nil {
+				item.Post.Tags = []string{tag}
+			}
+			if item.Put != nil {
+				item.Put.Tags = []string{tag}
+			}
+			if item.Patch != nil {
+				item.Patch.Tags = []string{tag}
+			}
+			if item.Head != nil {
+				item.Head.Tags = []string{tag}
+			}
+			if item.Delete != nil {
+				item.Delete.Tags = []string{tag}
+			}
+			if item.Options != nil {
+				item.Options.Tags = []string{tag}
+			}
+			if len(rootapi.Paths) == 0 {
+				rootapi.Paths = make(map[string]*swagger.Item)
+			}
+			rt = urlReplace(rt)
+			rootapi.Paths[rt] = item
+		}
+	}
+
+	return cname
 }
 
 // analyseNewNamespace returns version and the others params
@@ -830,10 +899,10 @@ func getFunctionParamType(t ast.Expr) string {
 	switch paramType := t.(type) {
 	case *ast.Ident:
 		return paramType.Name
-	// case *ast.Ellipsis:
-	// 	result := getFunctionParamType(paramType.Elt)
-	// 	result.array = true
-	// 	return result
+		// case *ast.Ellipsis:
+		// 	result := getFunctionParamType(paramType.Elt)
+		// 	result.array = true
+		// 	return result
 	case *ast.ArrayType:
 		return "[]" + getFunctionParamType(paramType.Elt)
 	case *ast.StarExpr:
