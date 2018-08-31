@@ -15,7 +15,7 @@ import (
 	"strings"
 
 	"github.com/beego/bee/cmd/commands"
-	beeLogger "github.com/beego/bee/logger"
+	"github.com/beego/bee/logger"
 	"github.com/beego/bee/logger/colors"
 	"github.com/beego/bee/utils"
 	"gopkg.in/yaml.v2"
@@ -57,7 +57,7 @@ Prints the current Bee, Beego and Go version alongside the platform information.
 }
 var outputFormat string
 
-const version = "1.10.0"
+const version = "1.10.1"
 
 func init() {
 	fs := flag.NewFlagSet("version", flag.ContinueOnError)
