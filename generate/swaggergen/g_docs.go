@@ -272,7 +272,9 @@ func GenerateDocs(curpath string) {
 								continue
 							}
 							version, params := analyseNewNamespace(v)
-							_ = version
+							if !strings.HasPrefix(version, "/") {
+								version = "/" + version
+							}
 							//if rootapi.BasePath == "" && version != "" {
 							//	rootapi.BasePath = version
 							//}
@@ -446,7 +448,7 @@ func analyseNSInclude(baseurl string, ce *ast.CallExpr) string {
 				tag := cname
 				if baseurl != "" {
 					rt = baseurl + rt
-					baseurl = strings.Trim(baseurl, "/")
+					baseurl = strings.TrimRight(baseurl, "/")
 					baseurls := strings.Split(baseurl, "/")
 					tag = baseurls[len(baseurls)-1]
 				}
