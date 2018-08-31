@@ -272,9 +272,10 @@ func GenerateDocs(curpath string) {
 								continue
 							}
 							version, params := analyseNewNamespace(v)
-							if rootapi.BasePath == "" && version != "" {
-								rootapi.BasePath = version
-							}
+							_ = version
+							//if rootapi.BasePath == "" && version != "" {
+							//	rootapi.BasePath = version
+							//}
 							for _, p := range params {
 								switch pp := p.(type) {
 								case *ast.CallExpr:
@@ -285,7 +286,7 @@ func GenerateDocs(curpath string) {
 											switch pp := sp.(type) {
 											case *ast.CallExpr:
 												if pp.Fun.(*ast.SelectorExpr).Sel.String() == "NSInclude" {
-													controllerName = analyseNSInclude(s, pp)
+													controllerName = analyseNSInclude(version+s, pp)
 													if v, ok := controllerComments[controllerName]; ok {
 														rootapi.Tags = append(rootapi.Tags, swagger.Tag{
 															Name:        strings.Trim(s, "/"),
@@ -296,7 +297,7 @@ func GenerateDocs(curpath string) {
 											}
 										}
 									} else if selname == "NSInclude" {
-										controllerName = analyseNSInclude("", pp)
+										controllerName = analyseNSInclude(version, pp)
 										if v, ok := controllerComments[controllerName]; ok {
 											rootapi.Tags = append(rootapi.Tags, swagger.Tag{
 												Name:        controllerName, // if the NSInclude has no prefix, we use the controllername as the tag
@@ -445,7 +446,9 @@ func analyseNSInclude(baseurl string, ce *ast.CallExpr) string {
 				tag := cname
 				if baseurl != "" {
 					rt = baseurl + rt
-					tag = strings.Trim(baseurl, "/")
+					baseurl = strings.Trim(baseurl, "/")
+					baseurls := strings.Split(baseurl, "/")
+					tag = baseurls[len(baseurls)-1]
 				}
 				if item.Get != nil {
 					item.Get.Tags = []string{tag}
